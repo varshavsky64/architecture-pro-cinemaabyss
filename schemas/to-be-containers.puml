@@ -1,0 +1,103 @@
+@startuml
+' встроенная раскладка: диаграмма рисуется без установленного Graphviz
+!pragma layout smetana
+!include <C4/C4_Container>
+
+title Диаграмма контейнеров: To-Be архитектура «Кинобездны»
+
+Person(viewer, "Зритель", "Смотрит фильмы по подписке с телефона, ноутбука или смарт-ТВ")
+
+' общей рамки системы нет: smetana ведёт стрелки к внешним системам петлями в обход неё
+Container(mobileApp, "Мобильное приложение", "iOS, Android", "Интерфейс для телефона")
+Container(webApp, "Веб-приложение", "SPA", "Интерфейс в браузере на ноутбуке")
+Container(tvApp, "Приложение для смарт-ТВ", "Smart TV", "Интерфейс для телевизора")
+
+Container(mobileBff, "BFF для мобильных", "Go", "Собирает ответ под экраны телефона")
+Container(webBff, "BFF для веба", "Go", "Собирает ответ под веб-интерфейс")
+Container(tvBff, "BFF для смарт-ТВ", "Go", "Собирает ответ под экраны телевизора")
+
+Container(gateway, "API Gateway", "", "Единая точка вызова сервисов, направляет запросы в сервисы")
+
+Boundary(usersDomain, "Пользователи", "домен") {
+  Container(users, "Сервис пользователей", "Go", "Аккаунты, вход, папка избранного")
+  ContainerDb(usersDb, "БД пользователей", "PostgreSQL", "Пользователи, избранное")
+}
+
+Boundary(subscriptionsDomain, "Подписки", "домен") {
+  Container(subscriptions, "Сервис подписок", "Go", "Подписки и скидки, ACL к сервисам лояльности и маркетплейсам")
+  ContainerDb(subscriptionsDb, "БД подписок", "PostgreSQL", "Подписки, скидки")
+}
+
+Boundary(paymentsDomain, "Платежи", "домен") {
+  Container(payments, "Сервис платежей", "Go", "Платежи, ACL к платёжным системам")
+  ContainerDb(paymentsDb, "БД платежей", "PostgreSQL", "Платежи")
+}
+
+Boundary(videoDomain, "Видео", "домен") {
+  Container(video, "Сервис видео", "Go", "Отдаёт видео для просмотра, ACL к онлайн-кинотеатрам и открытым источникам")
+  ContainerDb(videoDb, "БД видео", "PostgreSQL", "Видео: файлы, форматы, источники")
+  ContainerDb(videoStore, "Хранилище видео", "S3", "Видеофайлы")
+}
+
+Boundary(moviesDomain, "Movies", "домен") {
+  Container(movies, "Сервис movies", "Go", "Метаданные фильмов: жанры, актёры, оценки")
+  ContainerDb(moviesDb, "БД movies", "PostgreSQL", "Фильмы, жанры, актёры, оценки")
+}
+
+Container(recAdapter, "Адаптер рекомендаций", "Go", "ACL к рекомендательной системе: передаёт ей события, отдаёт подборки")
+ContainerQueue(kafka, "Брокер событий", "Kafka", "Асинхронные события между сервисами")
+
+System_Ext(recSystem, "Рекомендательная система", "Сторонняя, делает подборки фильмов")
+System_Ext(paymentSystems, "Платёжные системы", "Проводят оплату")
+System_Ext(marketplaces, "Маркетплейсы", "Продают подписки")
+System_Ext(loyalty, "Сервисы лояльности", "Скидки партнёров")
+System_Ext(contentSources, "Онлайн-кинотеатры и открытые источники", "Сторонний контент")
+
+Rel(viewer, mobileApp, "Смотрит фильмы")
+Rel(viewer, webApp, "Смотрит фильмы")
+Rel(viewer, tvApp, "Смотрит фильмы")
+
+Rel(mobileApp, mobileBff, "Вызывает API", "REST/HTTPS, JSON")
+Rel(webApp, webBff, "Вызывает API", "REST/HTTPS, JSON")
+Rel(tvApp, tvBff, "Вызывает API", "REST/HTTPS, JSON")
+
+Rel(mobileBff, gateway, "Вызывает сервисы", "REST")
+Rel(webBff, gateway, "Вызывает сервисы", "REST")
+Rel(tvBff, gateway, "Вызывает сервисы", "REST")
+
+Rel(gateway, users, "Аккаунт, вход, избранное", "REST")
+Rel(gateway, subscriptions, "Оформление подписки", "REST")
+Rel(gateway, payments, "Оплата", "REST")
+Rel(gateway, video, "Просмотр видео", "REST, HLS")
+Rel(gateway, movies, "Каталог фильмов, оценки", "REST")
+Rel(gateway, recAdapter, "Подборки", "REST")
+
+Rel(users, usersDb, "Читает и пишет", "SQL")
+Rel(subscriptions, subscriptionsDb, "Читает и пишет", "SQL")
+Rel(payments, paymentsDb, "Читает и пишет", "SQL")
+Rel(video, videoDb, "Читает и пишет", "SQL")
+Rel(video, videoStore, "Сохраняет и читает видеофайлы", "S3 API")
+Rel(movies, moviesDb, "Читает и пишет", "SQL")
+
+Rel(users, kafka, "Публикует «пользователь зарегистрировался»", "Kafka, асинхронно")
+Rel(payments, kafka, "Публикует «платёж прошёл»", "Kafka, асинхронно")
+Rel(subscriptions, kafka, "Читает «платёж прошёл», активирует подписку", "Kafka, асинхронно")
+Rel(movies, kafka, "Публикует «фильм оценён»", "Kafka, асинхронно")
+Rel(video, kafka, "Публикует «фильм просмотрен»", "Kafka, асинхронно")
+Rel(recAdapter, kafka, "Читает события о пользователях и фильмах", "Kafka, асинхронно")
+
+Rel(payments, paymentSystems, "Проводит оплату", "REST/HTTPS")
+Rel(subscriptions, loyalty, "Получает скидки партнёров", "REST/HTTPS")
+Rel(subscriptions, marketplaces, "Получает подписки, купленные на маркетплейсе", "REST/HTTPS")
+Rel(video, contentSources, "Получает контент", "HTTPS")
+Rel(recAdapter, recSystem, "Передаёт события, получает подборки", "REST/HTTPS")
+
+' внешние системы — в нижнем ряду, под своими сервисами
+Lay_D(usersDb, recSystem)
+Lay_D(paymentsDb, paymentSystems)
+Lay_D(subscriptionsDb, marketplaces)
+Lay_D(subscriptionsDb, loyalty)
+Lay_D(videoDb, contentSources)
+
+SHOW_LEGEND()
+@enduml
