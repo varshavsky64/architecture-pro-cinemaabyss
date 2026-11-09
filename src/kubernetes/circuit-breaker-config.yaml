@@ -1,0 +1,45 @@
+# Circuit Breaker for monolith and movies-service.
+# Istio applies these rules in the sidecar of the calling pod, the services themselves do not change.
+# The limits are tiny on purpose: the Fortio test with 50 parallel requests must trip the breaker.
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: monolith-circuit-breaker
+  namespace: cinemaabyss
+spec:
+  host: monolith
+  trafficPolicy:
+    # At most 1 request in progress and 1 in the queue, the rest get 503 at once
+    connectionPool:
+      tcp:
+        maxConnections: 1
+      http:
+        http1MaxPendingRequests: 1
+        maxRequestsPerConnection: 1
+    # After the first 5xx the pod leaves load balancing for 3 minutes
+    outlierDetection:
+      consecutive5xxErrors: 1
+      interval: 1s
+      baseEjectionTime: 3m
+      maxEjectionPercent: 100
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: movies-service-circuit-breaker
+  namespace: cinemaabyss
+spec:
+  host: movies-service
+  trafficPolicy:
+    # Same limits as for monolith
+    connectionPool:
+      tcp:
+        maxConnections: 1
+      http:
+        http1MaxPendingRequests: 1
+        maxRequestsPerConnection: 1
+    outlierDetection:
+      consecutive5xxErrors: 1
+      interval: 1s
+      baseEjectionTime: 3m
+      maxEjectionPercent: 100
