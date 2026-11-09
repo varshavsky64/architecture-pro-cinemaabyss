@@ -439,6 +439,10 @@ You can see 21 for the upstream_rq_pending_overflow value which means 21 calls s
 
 Приложите скриншот работы circuit breaker'а
 
+Нагрузка fortio на movies-service и статистика circuit breaker:
+
+![Работа circuit breaker](screenshots/task5-circuit-breaker.png)
+
 Удаляем все
 ```bash
 istioctl uninstall --purge
