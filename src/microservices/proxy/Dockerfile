@@ -1,4 +1,6 @@
-FROM maven:3.9-eclipse-temurin-21 AS builder
+# The jar does not depend on the CPU architecture, so Maven always runs natively,
+# also when the image is built for another platform (linux/arm64 in CI)
+FROM --platform=$BUILDPLATFORM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
