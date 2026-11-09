@@ -16,7 +16,7 @@ Container(mobileBff, "BFF для мобильных", "Go", "Собирает о
 Container(webBff, "BFF для веба", "Go", "Собирает ответ под веб-интерфейс")
 Container(tvBff, "BFF для смарт-ТВ", "Go", "Собирает ответ под экраны телевизора")
 
-Container(gateway, "API Gateway", "", "Единая точка вызова сервисов, направляет запросы в сервисы")
+Container(gateway, "API Gateway", "Java, Spring Cloud Gateway", "Единая точка вызова сервисов, направляет запросы в сервисы")
 
 Boundary(usersDomain, "Пользователи", "домен") {
   Container(users, "Сервис пользователей", "Go", "Аккаунты, вход, папка избранного")
