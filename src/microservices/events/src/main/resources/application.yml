@@ -1,0 +1,23 @@
+server:
+  port: ${PORT:8082}
+
+spring:
+  application:
+    name: events-service
+  jackson:
+    # The API uses snake_case fields: movie_id, user_id, payment_id
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
+    consumer:
+      group-id: events-service
+      # Also read events that were written before the consumer joined the group
+      auto-offset-reset: earliest
+
+# Kafka topic for each event type
+events:
+  topics:
+    movie: movie-events
+    user: user-events
+    payment: payment-events

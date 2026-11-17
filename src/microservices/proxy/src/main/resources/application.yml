@@ -1,0 +1,33 @@
+server:
+  port: ${PORT:8000}
+
+spring:
+  application:
+    name: proxy-service
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # Routes are checked top to bottom, the first match wins
+          routes:
+            # Strangler Fig: the movies microservice gets MOVIES_MIGRATION_PERCENT of movie requests,
+            # the rest do not match and fall through to the monolith route below
+            - id: movies-service
+              uri: ${MOVIES_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/movies/**
+                - name: MigrationPercent
+                  args:
+                    gradualMigration: ${GRADUAL_MIGRATION:true}
+                    percent: ${MOVIES_MIGRATION_PERCENT:0}
+
+            - id: events-service
+              uri: ${EVENTS_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/events/**
+
+            # Everything not extracted yet is served by the monolith
+            - id: monolith
+              uri: ${MONOLITH_URL:http://localhost:8080}
+              predicates:
+                - Path=/api/**
